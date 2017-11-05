@@ -10,7 +10,6 @@ from skimage.morphology import disk, binary_erosion, binary_closing
 from skimage.filters import roberts
 
 def get_segmented_lungs(im, plot=False, THRESHOLD = -320):
-
     '''
     This funtion segments the lungs from the given 2D slice.
     '''
@@ -86,14 +85,26 @@ def get_segmented_lungs(im, plot=False, THRESHOLD = -320):
     if plot == True:
         plots[1,2].axis('off')
         plots[1,2].imshow(im, cmap=plt.cm.bone)
-
     return im
 
 def iter_samples(func):
     reader = csv.reader(open('./annotations.csv', encoding='utf-8'))
+    info_list=[]
+    i=-1
     for line in reader:
+        if i==-1:
+            i=i+1
+            continue
         patient_path = './train_set/' + line[0] + '.mhd'
-        func(patient_path)
+        info=func(patient_path)
+        info['name']=line[0]
+        info['z_index']=int((float(line[3])-info['origin'][2])/info['spacing'][2])
+        info['x_location']=float(line[1])
+        info['y_location']=float(line[2])
+        info['diameter']=float(line[4])
+        info_list.append(info)
+        i=i+1
+    return info_list
 
 def get_info(patient_path):
     info={}
@@ -103,16 +114,61 @@ def get_info(patient_path):
     info['spacing'] = np.array(img.GetSpacing())
     return info
 
-def resample(im_info, z, scale_r=0.5):
-    # z should be a list of required z_locations
-    # im_info comes from get_info
-    # Sample usage: y=resample(get_info('./train_set/LKDS-00001.mhd'), [100,152])
+def resample(im_info, scale_r=0.5):
+    # input im_info which is defined in func 'iter_samples'
+    # output the resampled info
+    info={}
     scale=im_info['spacing'][1]
     xy=np.arange(0, 512*scale, scale)
     xy_r=np.arange(0, 512*scale, scale_r)
-    imgs=[]
-    for z_ in z:
-        img=im_info['img'][z_]
-        f=interp2d(xy,xy,img)
-        imgs.append(f(xy_r,xy_r))
-    return imgs
+    img=im_info['img'][im_info['z_index']]
+    f=interp2d(xy,xy,img)
+    info['img']=get_segmented_lungs(f(xy_r,xy_r))
+    x_min=int((im_info['x_location']-im_info['origin'][0]-im_info['diameter']/2)/scale_r)
+    x_center=int((im_info['x_location']-im_info['origin'][0])/scale_r)
+    x_max=int((im_info['x_location']-im_info['origin'][0]+im_info['diameter']/2)/scale_r)
+    y_min=int((im_info['y_location']-im_info['origin'][1]-im_info['diameter']/2)/scale_r)
+    y_center=int((im_info['y_location']-im_info['origin'][1])/scale_r)
+    y_max=int((im_info['y_location']-im_info['origin'][1]+im_info['diameter']/2)/scale_r)
+    info['x']=[x_min,x_center,x_max]
+    info['y']=[y_min,y_center,y_max]
+    return info
+
+
+def get_pn_sample(info, window_size=40):
+    # To get the positive and negative samples in an img
+    # info is defined in func 'resample'
+img=info['img']
+x_min=info['x'][0]
+x_center=info['x'][1]
+x_max=info['x'][2]
+y_min=info['y'][0]
+y_center=info['y'][1]
+y_max=info['y'][2]
+shape=img.shape[0]
+samples={}
+    '''Positive samples'''
+    # 这里没考虑窗口取到黑区的情况
+    center=img[int(y_center-window_size/2):int(y_center+window_size/2),int(x_center-window_size/2):int(x_center+window_size/2)]
+    left=img[int(y_center-window_size/2):int(y_center+window_size/2),x_min:x_min+window_size]
+    right=img[int(y_center-window_size/2):int(y_center+window_size/2),x_max-window_size:x_max]
+    up=img[y_max-window_size:y_max,int(x_center-window_size/2):int(x_center+window_size/2)]
+    down=img[y_min:y_min+window_size,int(x_center-window_size/2):int(x_center+window_size/2)]
+    positive=[center,up,down,left,right]
+    '''Negative samples'''
+    negative=[]
+    while len(negative)<5:
+        x=np.random.randint(shape*0.2,0.8*shape-window_size)
+        y=np.random.randint(shape*0.2,0.8*shape-window_size)
+        mat=img[x:x+window_size,y:y+window_size]
+        if (x>x_min & x<x_max & y<y_max & y>y_min):
+            continue
+        else:
+            zeros=np.where(mat==0)
+            if len(zeros[0])<40:
+                negative.append(mat)             
+    samples['positive']=positive
+    samples['negative']=negative
+
+    return samples
+
