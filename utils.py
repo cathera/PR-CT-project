@@ -102,8 +102,8 @@ def iter_samples():
             info = get_info(line)
             coords = []
             diams = []
-        coords.append((np.array([float(line[1]), float(line[2]), float(
-            line[3])]) - info['origin']) / info['spacing'])
+        coords.append(np.rint((np.array([float(line[1]), float(line[2]), float(
+            line[3])]) - info['origin']) / info['spacing']))
         diams.append(float(line[4]))
         t = line[0]
 
@@ -115,7 +115,6 @@ def get_info(line):
     info['img'] = sitk.GetArrayFromImage(img)
     info['origin'] = np.array(img.GetOrigin())
     info['spacing'] = np.array(img.GetSpacing())
-    info['locations'] = []
     return info
 
 
@@ -156,11 +155,11 @@ def get_pn_samples(info, scale_r, r=20):
     Z_window = np.repeat(np.array(
         [-r_z, -r_z, -r_z, -r_z, -r_z, -2 * r_z + bias, -bias]), len(info['coords']))
     X = (np.tile(info['coords'][:, 0],
-                 (1, 5)).T + X_window).T.flatten().astype(int)
+                    (1, 5)).T + X_window).T.flatten().astype(int)
     Y = (np.tile(info['coords'][:, 1],
-                 (1, 5)).T + Y_window).T.flatten().astype(int)
+                    (1, 5)).T + Y_window).T.flatten().astype(int)
     Z = (np.tile(info['coords'][:, 2],
-                 (1, 5)).T + Z_window).T.flatten().astype(int)
+                    (1, 5)).T + Z_window).T.flatten().astype(int)
     # return X,Y,Z
     '''Positive samples'''
     # 这里没考虑窗口取到黑区的情况
@@ -168,23 +167,30 @@ def get_pn_samples(info, scale_r, r=20):
     for i in range(len(Z)):
         #print(Z[i], Y[i], X[i])
         img = info['img'][Z[i]:Z[i] + 2 * r_z, Y[i]:Y[i] + 2 * r_y, X[i]:X[i] + 2 * r_x]
-        positive.append(
-            zoom(img, (r / r_z, r / r_y, r / r_x), order=3, mode='nearest'))
+        positive.append(zoom(img, (r / r_z, r / r_y, r / r_x), order=3, mode='nearest'))
     '''Negative samples'''
-    # Above calculations are all done in matrix form
-    # TODO: Adapt negative sampling
-    # negative=[]
-    # while len(negative)<5:
-    #     x=np.random.randint(shape*0.2,0.8*shape-window_size)
-    #     y=np.random.randint(shape*0.2,0.8*shape-window_size)
-    #     mat=img[x:x+window_size,y:y+window_size]
-    #     if (x>x_min & x<x_max & y<y_max & y>y_min):
-    #         continue
-    #     else:
-    #         zeros=np.where(mat==0)
-    #         if len(zeros[0])<40:
-    #             negative.append(mat)
-    # samples['positive']=positive
-    # samples['negative']=negative
+    shape = info['img'].shape
+    nLen = 30   #这里改成len(info['coords'])?
+    negative=[]
+    nX = np.random.randint(shape[1]*0.25,0.75*shape[1]-r_x, size=nLen)
+    nY = np.random.randint(shape[2]*0.25,0.75*shape[2]-r_y, size=nLen)
+    nZ = np.random.randint(shape[0]*0.25,0.75*shape[0]-r_z, size=nLen)
+    i=0
+    while len(negative)< nLen/2 and i<nLen:
+        if (~coords_range(info['coords'],[nZ[i],nX[i],nY[i]]), r_x):
+            i=i+1
+            continue
+        else:
+            mat=img[nZ[i]:nZ[i]+r_z,nX[i]:nX[i]+r_x,nY[i]:nY[i]+r_y]
+            zeros=np.where(mat==0)
+            if len(zeros[0])<60:
+                negative.append(mat)
+            i=i+1
+    return positive,negative
 
-    return positive
+def coords_range(coords, test, r=20):
+    distance = abs(coords - test)
+    if len(np.where(distance < r)[0] > 0):
+        return False
+    else:
+        return True
