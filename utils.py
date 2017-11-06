@@ -90,7 +90,7 @@ def get_segmented_lungs(im, plot=False, THRESHOLD=-320):
     return im
 
 
-def iter_samples(func):
+def iter_samples():
     reader = csv.reader(open('./annotations.csv', encoding='utf-8'))
     t = ''
     for line in reader:
@@ -98,7 +98,6 @@ def iter_samples(func):
             if 'info' in locals():
                 info['coords'] = np.array(coords)
                 info['diams'] = np.array(diams)[np.newaxis].T
-                # extract(info)
                 yield info
             info = get_info(line)
             coords = []
@@ -137,11 +136,15 @@ def resample(im_info, z, spacing_r=0.5):
     return im_info
 
 
-def extract(im_info):
-    pass
+def extract(im_info, scale_r=0.5, r=20):
+    # for z in range(len(im_info['img'])):
+    #     im_info['img'][z]=get_segmented_lungs(im_info['img'][z])
+    samples=get_pn_samples(im_info, scale_r, r)
+    for i, s in enumerate(samples):
+        np.save('./samples/'+im_info['name']+'_'+str(i), s)
 
 
-def get_pn_sample(info, scale_r, r=20):
+def get_pn_samples(info, scale_r, r=20):
     # To get the positive and negative samples in an img
     # info is defined in func 'resample'
     r_x, r_y, r_z = np.ceil(info['spacing'] ** -1 * scale_r * r).astype(int)
