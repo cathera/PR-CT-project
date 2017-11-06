@@ -4,6 +4,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 from scipy import ndimage as ndi
 from scipy.interpolate import interp2d
+from scipy.ndimage import zoom
 from skimage import measure
 from skimage.segmentation import clear_border
 from skimage.morphology import disk, binary_erosion, binary_closing
@@ -140,28 +141,32 @@ def extract(im_info):
     pass
 
 
-def get_pn_sample(info, window_size=40):
+def get_pn_sample(info, scale_r, r=20):
     # To get the positive and negative samples in an img
     # info is defined in func 'resample'
-    r = window_size / 2
-    z_pos = info['coords'][:, 2].astype(int)
+    r_x, r_y, r_z = np.ceil(info['spacing'] ** -1 * scale_r * r).astype(int)
     bias = 15  # info['diams'] / 2  bias should be randomly chosen
-    coords_center = info['coords'][:, :2]
-    X_window = np.tile(np.array([[-r, r], [-bias, 2 * r - bias],
-                                 [-2 * r + bias, bias], [-r, r], [-r, r]]), len(z_pos)).reshape(-1, 2)
-    Y_window = np.tile(np.array([[-r, r], [-r, r], [-r, r], [-2 * r +
-                                                             bias, bias], [-bias, 2 * r - bias]]), len(z_pos)).reshape(-1, 2)
-    X = (np.tile(coords_center[:, 0][np.newaxis],
-                 (2, 5)).T + X_window).astype(int)
-    Y = (np.tile(coords_center[:, 1][np.newaxis],
-                 (2, 5)).T + Y_window).astype(int)
-    Z = np.tile(z_pos, 5)
+    X_window = np.repeat(np.array([-r_x,
+        -bias, -2 * r_x + bias, -r_x, -r_x, -r_x, -r_x]), len(info['coords']))
+    Y_window = np.repeat(
+        np.array([-r_y, -r_y, -r_y, -2 * r_y + bias, -bias, r_y, r_y]), len(info['coords']))
+    Z_window = np.repeat(np.array(
+        [-r_z, -r_z, -r_z, -r_z, -r_z, -2 * r_z + bias, -bias]), len(info['coords']))
+    X = (np.tile(info['coords'][:, 0],
+                 (1, 5)).T + X_window).T.flatten().astype(int)
+    Y = (np.tile(info['coords'][:, 1],
+                 (1, 5)).T + Y_window).T.flatten().astype(int)
+    Z = (np.tile(info['coords'][:, 2],
+                 (1, 5)).T + Z_window).T.flatten().astype(int)
+    # return X,Y,Z
     '''Positive samples'''
     # 这里没考虑窗口取到黑区的情况
     positive = []
     for i in range(len(Z)):
-        print(Z[i], Y[i], X[i])
-        positive.append(info['img'][Z[i], Y[i][0]:Y[i][1], X[i][0]:X[i][1]])
+        #print(Z[i], Y[i], X[i])
+        img = info['img'][Z[i]:Z[i] + 2 * r_z, Y[i]:Y[i] + 2 * r_y, X[i]:X[i] + 2 * r_x]
+        positive.append(
+            zoom(img, (r / r_z, r / r_y, r / r_x), order=3, mode='nearest'))
     '''Negative samples'''
     # Above calculations are all done in matrix form
     # TODO: Adapt negative sampling
