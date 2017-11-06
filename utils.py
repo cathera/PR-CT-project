@@ -145,8 +145,9 @@ def extract(im_info, scale_r=0.5, r=20):
 
 def get_pn_samples(info, scale_r, r=20):
     # To get the positive and negative samples in an img
-    # info is defined in func 'resample'
+    # info is defined in func 'resample' 
     r_x, r_y, r_z = np.ceil(info['spacing'] ** -1 * scale_r * r).astype(int)
+    '''
     bias = 15  # info['diams'] / 2  bias should be randomly chosen
     X_window = np.repeat(np.array([-r_x,
         -bias, -2 * r_x + bias, -r_x, -r_x, -r_x, -r_x]), len(info['coords']))
@@ -161,13 +162,13 @@ def get_pn_samples(info, scale_r, r=20):
     Z = (np.tile(info['coords'][:, 2],
                     (1, 5)).T + Z_window).T.flatten().astype(int)
     # return X,Y,Z
-    '''Positive samples'''
     # 这里没考虑窗口取到黑区的情况
     positive = []
     for i in range(len(Z)):
         #print(Z[i], Y[i], X[i])
         img = info['img'][Z[i]:Z[i] + 2 * r_z, Y[i]:Y[i] + 2 * r_y, X[i]:X[i] + 2 * r_x]
         positive.append(zoom(img, (r / r_z, r / r_y, r / r_x), order=3, mode='nearest'))
+    '''
     '''Negative samples'''
     shape = info['img'].shape
     nLen = 30   #这里改成len(info['coords'])?
@@ -184,9 +185,9 @@ def get_pn_samples(info, scale_r, r=20):
             mat=img[nZ[i]:nZ[i]+r_z,nX[i]:nX[i]+r_x,nY[i]:nY[i]+r_y]
             zeros=np.where(mat==0)
             if len(zeros[0])<60:
-                negative.append(mat)
+                negative.append(zoom(mat, (r / r_z, r / r_y, r / r_x), order=3, mode='nearest'))
             i=i+1
-    return positive,negative
+    return negative#positive,negative
 
 def coords_range(coords, test, r=20):
     distance = abs(coords - test)
