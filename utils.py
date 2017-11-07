@@ -178,20 +178,21 @@ def get_pn_samples(info, scale_r, r=20):
     nZ = np.random.randint(shape[0]*0.25,0.75*shape[0]-r_z, size=nLen)
     i=0
     while len(negative)< nLen/2 and i<nLen:
-        if (~coords_range(info['coords'],[nZ[i],nX[i],nY[i]]), r_x):
-            i=i+1
-            continue
-        else:
-            mat=img[nZ[i]:nZ[i]+r_z,nX[i]:nX[i]+r_x,nY[i]:nY[i]+r_y]
+        if coords_range(info['coords'],[nZ[i],nX[i],nY[i]], r_x):
+            mat=info['img'][nZ[i]:nZ[i]+r_z,nX[i]:nX[i]+r_x,nY[i]:nY[i]+r_y]
             zeros=np.where(mat==0)
             if len(zeros[0])<60:
                 negative.append(zoom(mat, (r / r_z, r / r_y, r / r_x), order=3, mode='nearest'))
             i=i+1
+            
+        else:
+            i=i+1
+            continue
     return negative#positive,negative
 
 def coords_range(coords, test, r=20):
     distance = abs(coords - test)
-    if len(np.where(distance < r)[0] > 0):
-        return False
-    else:
-        return True
+    for v in distance:
+        if len(np.where(v < r)[0]) >= 3:
+            return False
+    return True
