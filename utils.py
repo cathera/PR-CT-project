@@ -161,38 +161,41 @@ def get_pn_samples(info, scale_r, r=20):
     # Z = (np.tile(info['coords'][:, 2],
     #                 (1, 7)) + Z_window).T.flatten().astype(int)
     # return X,Y,Z
-    # 这里没考虑窗口取到黑区的情况
-    positive = []
-    for x, y, z in info['coords']:
-        img = zoom(info['img'][max(0, z - r_z):max(z + r_z, 2 * r_z), max(0, y - r_y):max(y + r_y, 2 * r_y),
-                               max(0, x - r_x):max(x + r_x, 2 * r_x)], (r / r_z, r / r_y, r / r_x), order=3, mode='nearest')
-        positive.extend((img, img.transpose((0, 2, 1)), img.transpose((1, 0, 2)), img.transpose(
-            (1, 2, 0)), img.transpose((2, 1, 0)), img.transpose((2, 0, 1,))))
-        positive.extend((img[:, :, ::-1], img[::-1, :, :], img[:, ::-1, :]))
-    return positive
+    # positive = []
+    # for x, y, z in info['coords']:
+    #     img = zoom(info['img'][max(0, z - r_z):max(z + r_z, 2 * r_z), max(0, y - r_y):max(y + r_y, 2 * r_y),
+    #                            max(0, x - r_x):max(x + r_x, 2 * r_x)], (r / r_z, r / r_y, r / r_x), order=3, mode='nearest')
+    #     positive.extend((img, img.transpose((0, 2, 1)), img.transpose((1, 0, 2)), img.transpose(
+    #         (1, 2, 0)), img.transpose((2, 1, 0)), img.transpose((2, 0, 1,))))
+    #     positive.extend((img[:, :, ::-1], img[::-1, :, :], img[:, ::-1, :]))
+    # return positive
     '''Negative samples'''
-    # shape = info['img'].shape
-    # nLen = len(info['coords'])*18   #这里改成len(info['coords'])?
-    # negative=[]
-    # nX = np.random.randint(shape[1]*0.25,0.75*shape[1]-2*r_x, size=nLen)
-    # nY = np.random.randint(shape[2]*0.25,0.75*shape[2]-2*r_y, size=nLen)
-    # nZ = np.random.randint(shape[0]*0.25,0.75*shape[0]-2*r_z, size=nLen)
-    # i=0
-    # while len(negative)< nLen/2 and i<nLen:
-    #     if coords_range(info['coords'],[nZ[i],nX[i],nY[i]], r_x):
-    #         mat=info['img'][nZ[i]:nZ[i]+2*r_z,nX[i]:nX[i]+2*r_x,nY[i]:nY[i]+2*r_y]
-    #         zeros=np.where(mat==0)
-    #         if len(zeros[0])<60:
-    #             negative.append(zoom(mat, (r / r_z, r / r_y, r / r_x), order=3, mode='nearest'))
-    #         else:
-    #             print('throw')
-    #         i=i+1
-    #
-    #     else:
-    #         print('throw')
-    #         i=i+1
-    #         continue
-    # return negative#positive,negative
+    shape = info['img'].shape
+    nLen = len(info['coords'])*50
+    negative=[]
+    nX = np.random.randint(shape[1]*0.1,0.9*shape[1]-2*r_x, size=nLen)
+    nY = np.random.randint(shape[2]*0.1,0.9*shape[2]-2*r_y, size=nLen)
+    nZ = np.random.randint(shape[0]*0.1,0.9*shape[0]-2*r_z, size=nLen)
+    i=0
+    while len(negative)< nLen/5 and i<nLen:
+        if coords_range(info['coords'],[nZ[i],nX[i],nY[i]], r_x):
+            mat=info['img'][nZ[i]:nZ[i]+2*r_z,nX[i]:nX[i]+2*r_x,nY[i]:nY[i]+2*r_y]
+            zeros=np.where(mat>=50)
+            blacks=np.where(mat<-1000)
+            if len(zeros[0])<40*40*15 & len(blacks[0])<40*40*15 :
+                negative.append(zoom(mat, (r / r_z, r / r_y, r / r_x), order=3, mode='nearest'))
+            else:
+                if (len(zeros[0])>40*40*6):
+                    print('border zero')
+                else:
+                    print('border blacks')
+            i=i+1
+    
+        else:
+            print('to close')
+            i=i+1
+            continue
+    return negative#positive,negative
 
 
 def coords_range(coords, test, r=20):
