@@ -1,12 +1,17 @@
 import utils
 
-l = utils.iter_samples()
-s = next(l)
-s = next(l)
+sample_list = utils.iter_samples()
+sample = next(sample_list)
+img = sample['img']
+img_r=utils.segment_resample_resize(img[100],sample['spacing'])
 
-img = s['img'][s['coords'][0][0]]
-pn = utils.get_pn_samples(s, 1)
-Len = len(pn)
-print(Len)
-utils.plt.imshow(img)
+for i in [1,20,40,60]:
+    img=s['img'][i]
+    lung=utils.get_segmented_lungs(img)
+    lung_area=utils.np.where(lung!=0)
+    lung_area=lung_area[0].shape[0]
+    print(i,lung_area/(512*512))
+    utils.plt.figure()
+    utils.plt.imshow(lung)
+
 utils.plt.show()

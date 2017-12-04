@@ -204,3 +204,21 @@ def coords_range(coords, test, r=20):
         if len(np.where(v < 2 * r)[0]) >= 3:
             return False
     return True
+
+def preprocess(sample, spacing_r=1, scale=512):
+    # Segment the lung
+    # Resample a sample by 1*1*1 spacing
+    # Then cut it to size 512*512
+    def segment_resample_resize(img):
+        # img is a 2d matirx
+        '''segment'''
+        img = get_segmented_lungs(img)
+        '''resample'''
+        xy = np.arange(0, 512 * sample['spacing'][0], sample['spacing'][0])
+        xy_r = np.arange(0, 512 * sample['spacing'][0], spacing_r)
+        f = interp2d(xy, xy, img)
+        img = f(xy_r, xy_r)
+        '''resize'''
+        return img
+    sample['img']=list(map(segment_resample_resize,sample['img']))
+    return sample
