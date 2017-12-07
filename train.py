@@ -6,8 +6,8 @@ from torch.autograd import Variable
 from torch import optim
 from torch.utils.data import DataLoader
 
-train_set=FPRED_datasets('./samples_positive_transpose/', './samples_negative/',1,10000)
-test_set=FPRED_datasets('./samples_positive_transpose/', './samples_negative/',1,500)
+train_set=FPRED_datasets('./samples_positive_transpose/', './samples_negative_scale1/',1,10000)
+test_set=FPRED_datasets('./samples_positive_test/', './samples_negative_test/',5,500)
 train_load=DataLoader(train_set, batch_size=16, shuffle=True)
 test_load=DataLoader(test_set, batch_size=4, shuffle=True)
 
