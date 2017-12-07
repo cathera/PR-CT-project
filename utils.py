@@ -91,7 +91,7 @@ def get_segmented_lungs(im, plot=False, THRESHOLD=-320):
 
 
 def iter_samples():
-    reader = csv.reader(open('../annotations.csv', encoding='utf-8'))
+    reader = csv.reader(open('./annotations.csv', encoding='utf-8'))
     t = ''
     for line in reader:
         if line[0] != t:
@@ -110,7 +110,7 @@ def iter_samples():
 
 def get_info(line):
     info = {}
-    img = sitk.ReadImage('../train_set/' + line[0] + '.mhd')
+    img = sitk.ReadImage('./train_set/' + line[0] + '.mhd')
     info['name'] = line[0]
     info['img'] = sitk.GetArrayFromImage(img)
     info['origin'] = np.array(img.GetOrigin())
@@ -146,7 +146,8 @@ def extract2(im_info, spacing_r=1):
     # for z in range(len(im_info['img'])):
     #     im_info['img'][z]=get_segmented_lungs(im_info['img'][z])
     sample = preprocess(im_info, spacing_r)
-    np.save('./samples/' + sample['name'] + sample)
+    with open('./preprocess/' + sample['name'], 'wb') as f:
+        np.save(f, sample)
 
 
 def get_pn_samples(info, scale_r, r=20):
@@ -215,18 +216,15 @@ def preprocess(sample, spacing_r=1, scale=512):
         '''segment'''
         img = get_segmented_lungs(img)
         return img
-    imgs=list(map(segment_resample_resize,sample['img']))
-    imgs=zoom(imgs, (sample['spacing'][::-1] / spacing_r), order = 3)
-    (z,x,y)=imgs.shape
-    z=round(z/2)
-    x=round(x/2)
-    y=round(y/2)
-    sample['img']=imgs[z-100:z+100,x-125:x+125,y-150:y+150]
-    sample['coords'] = sample['coords'] * sample['spacing'][::-1] / spacing_r - (z-100,x-125,y-150)
+    sample['img']=zoom(sample['img'], (sample['spacing'][::-1] / spacing_r), order = 3)
+    print('zoomed')
+    sample['img']=np.array(list(map(segment_resample_resize, sample['img'])))
+    print('segmented')
+    sample['coords'] = sample['coords'] * sample['spacing'] / spacing_r
     return sample
 
 def run_preprocess():
     sample_list=iter_samples()
     for sample in sample_list:
+        print(sample['name'])
         extract2(sample)
-    
