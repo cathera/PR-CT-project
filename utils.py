@@ -177,28 +177,23 @@ def get_pn_samples(info, scale_r, r=20):
     # return positive
     '''Negative samples'''
     shape = info['img'].shape
-    nLen = len(info['coords'])*50
+    nLen = len(info['coords'])*100
     negative=[]
     nX = np.random.randint(shape[1]*0.1,0.9*shape[1]-2*r_x, size=nLen)
     nY = np.random.randint(shape[2]*0.1,0.9*shape[2]-2*r_y, size=nLen)
     nZ = np.random.randint(shape[0]*0.1,0.9*shape[0]-2*r_z, size=nLen)
     i=0
-    while len(negative)< nLen/5 and i<nLen:
+    while len(negative)< nLen/2 and i<nLen:
         if coords_range(info['coords'],[nZ[i],nX[i],nY[i]], r_x):
             mat=info['img'][nZ[i]:nZ[i]+2*r_z,nX[i]:nX[i]+2*r_x,nY[i]:nY[i]+2*r_y]
             zeros=np.where(mat>=50)
             blacks=np.where(mat<-1000)
             if len(zeros[0])<40*40*15 & len(blacks[0])<40*40*15 :
                 negative.append(zoom(mat, (r / r_z, r / r_y, r / r_x), order=3, mode='nearest'))
-            else:
-                if (len(zeros[0])>40*40*6):
-                    print('border zero')
-                else:
-                    print('border blacks')
             i=i+1
-    
+
         else:
-            print('to close')
+            #print('too close')
             i=i+1
             continue
     return negative#positive,negative
